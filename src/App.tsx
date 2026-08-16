@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type SyntheticEvent,
-  type TransitionEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -18,10 +17,10 @@ import {
   FP_WELCOME,
   HERO,
   LETTER,
-  PHOTOS,
   TIMELINE,
 } from './content'
 import musicaFondo from './music/una-noche.mp3'
+import PhotoGallery from './PhotoGallery'
 import './App.css'
 
 const HOLD_MS = 2600
@@ -70,9 +69,6 @@ function App() {
   const [volume, setVolume] = useState(0.5)
   const [letterOpen, setLetterOpen] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [galleryItems, setGalleryItems] = useState(() => [...PHOTOS])
-  const [galTx, setGalTx] = useState(0)
-  const [galAnimate, setGalAnimate] = useState(true)
 
   const pressingRef = useRef(false)
   const startTsRef = useRef(0)
@@ -82,8 +78,6 @@ function App() {
   const scanAudioRef = useRef<HTMLAudioElement | null>(null)
   const failAudioRef = useRef<HTMLAudioElement | null>(null)
   const completeAudioRef = useRef<HTMLAudioElement | null>(null)
-  const galTrackRef = useRef<HTMLDivElement | null>(null)
-  const galBusyRef = useRef(false)
   const volumeHideRef = useRef(0)
   const confettiRef = useRef<HTMLCanvasElement | null>(null)
   const confettiFiredRef = useRef(false)
@@ -366,58 +360,6 @@ function App() {
     volumeHideRef.current = window.setTimeout(() => setVolumeVisible(false), 2000)
   }
 
-  const measureGalStep = () => {
-    const track = galTrackRef.current
-    const first = track?.querySelector('.polaroid') as HTMLElement | null
-    if (!track || !first) return 0
-    const gap = parseFloat(getComputedStyle(track).gap) || 0
-    return first.getBoundingClientRect().width + gap
-  }
-
-  const goNext = () => {
-    if (galBusyRef.current) return
-    const d = measureGalStep()
-    if (!d) return
-    galBusyRef.current = true
-    setGalAnimate(true)
-    setGalTx(-d)
-  }
-
-  const goPrev = () => {
-    if (galBusyRef.current) return
-    const d = measureGalStep()
-    if (!d) return
-    galBusyRef.current = true
-    setGalAnimate(false)
-    setGalleryItems((prev) => {
-      const last = prev[prev.length - 1]
-      return [last, ...prev.slice(0, -1)]
-    })
-    setGalTx(-d)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setGalAnimate(true)
-        setGalTx(0)
-        window.setTimeout(() => {
-          galBusyRef.current = false
-        }, 560)
-      })
-    })
-  }
-
-  const onGalTransitionEnd = (e: TransitionEvent<HTMLDivElement>) => {
-    if (e.target !== galTrackRef.current) return
-    if (e.propertyName !== 'transform') return
-    if (galTx >= 0) return
-
-    setGalAnimate(false)
-    setGalleryItems((prev) => [...prev.slice(1), prev[0]])
-    setGalTx(0)
-    requestAnimationFrame(() => {
-      galBusyRef.current = false
-    })
-  }
-
   useEffect(() => {
     if (!letterOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -633,50 +575,7 @@ function App() {
                 <Ornament />
                 <h2>Nuestras fotos</h2>
               </div>
-              <div className="gallery reveal" data-delay="1">
-                <button
-                  className="gal-nav gal-prev"
-                  type="button"
-                  aria-label="Anterior"
-                  onClick={goPrev}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                </button>
-                <div className="gal-viewport">
-                  <div
-                    className="gal-track"
-                    ref={galTrackRef}
-                    onTransitionEnd={onGalTransitionEnd}
-                    style={{
-                      transform: `translateX(${galTx}px)`,
-                      transition: galAnimate
-                        ? 'transform .55s cubic-bezier(.2,.7,.2,1)'
-                        : 'none',
-                    }}
-                  >
-                    {galleryItems.map((photo) => (
-                      <figure className="polaroid" key={photo.src}>
-                        <div className="photo">
-                          <img src={photo.src} alt={photo.caption} loading="lazy" />
-                        </div>
-                        <figcaption>{photo.caption}</figcaption>
-                      </figure>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  className="gal-nav gal-next"
-                  type="button"
-                  aria-label="Siguiente"
-                  onClick={goNext}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
-              </div>
+              <PhotoGallery />
             </div>
           </section>
 
